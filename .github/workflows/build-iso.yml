@@ -10,18 +10,25 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Instalar BlueBuild CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Detectar versión base de Fedora
+        id: get_version
         run: |
-          gh release download --repo blue-build/cli --pattern "*x86_64-unknown-linux-gnu.tar.gz" --clobber
-          tar -xzf *.tar.gz
-          sudo mv bluebuild /usr/local/bin/
-          bluebuild --version
+          # Extrae dinámicamente la versión de Fedora desde la imagen de Wayblue
+          echo "Descargando la imagen de Wayfire para leer su configuración..."
+          podman pull ghcr.io/wayblueorg/wayfire:latest
+          VERSION=$(podman run --rm ghcr.io/wayblueorg/wayfire:latest cat /usr/lib/os-release | grep '^VERSION_ID=' | cut -d= -f2 | tr -d '"')
+          echo "La imagen actual de Wayblue está basada en Fedora $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Generar la ISO de Wayfire
-        run: |
-          sudo bluebuild generate-iso --iso-name wayblue-wayfire.iso image ghcr.io/wayblueorg/wayfire:latest
+      - name: Generar la ISO Nativa
+        uses: jasonn3/build-container-installer@main
+        with:
+          arch: x86_64
+          image_repo: ghcr.io/wayblueorg
+          image_name: wayfire
+          image_tag: latest
+          version: ${{ steps.get_version.outputs.VERSION }}
+          iso_name: wayblue-wayfire.iso
 
       - name: Guardar la ISO para descargar
         uses: actions/upload-artifact@v4
