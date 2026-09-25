@@ -1,0 +1,11 @@
+# wf-shell: panel superior
+wf-panel &
+
+# Notificaciones
+mako &
+
+# Fondo de pantalla (color solido = cero GPU/RAM de imagen)
+swaybg -m solid -c "#1e2430" &
+
+# Servidor de terminal: arranque instantaneo de foot
+foot --server &

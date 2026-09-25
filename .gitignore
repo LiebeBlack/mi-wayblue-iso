@@ -1,0 +1,20 @@
+# Salidas de build de live-build (regenerables)
+*.iso
+*.iso.sha256
+build.log
+cache/
+chroot/
+binary/
+local/
+config/packages/
+config/debian-installer/
+config/binary_debian-installer/
+config/.build
+config/common
+config/bootstrap
+config/chroot
+config/binary
+config/source
+
+# Sistema
+.DS_Store

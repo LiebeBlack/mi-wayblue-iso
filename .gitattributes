@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Fuerza LF en scripts que ejecuta Linux (un CRLF rompe el build)
+auto/config text eol=lf
+config/hooks/** text eol=lf

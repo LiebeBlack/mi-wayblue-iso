@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+# ---------------------------------------------------------------------------
+# Debian 13 "trixie" - Labwc - Lenovo 300e (Celeron N4120)
+#
+# Este script es la fuente de verdad: `lb config` lo ejecuta automaticamente
+# (wrapper auto/config), por lo que debe llamarse con "noauto" para evitar
+# recursion infinita. Regenera config/ en cada build.
+# ---------------------------------------------------------------------------
+
+lb config noauto \
+    --distribution trixie \
+    --architectures amd64 \
+    --linux-flavours amd64 \
+    --binary-images iso-hybrid \
+    --bootloaders grub-efi \
+    --archive-areas "main contrib non-free non-free-firmware" \
+    --parent-archive-areas "main contrib non-free non-free-firmware" \
+    --debian-installer live \
+    --debian-installer-gui false \
+    --uefi-secure-boot enable \
+    --security true \
+    --updates true \
+    --backports false \
+    --apt-recommends false \
+    --memtest none \
+    --iso-volume "Debian-13-Labwc-300e" \
+    "${@}"

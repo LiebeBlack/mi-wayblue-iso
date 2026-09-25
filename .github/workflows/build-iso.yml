@@ -1,39 +1,94 @@
-name: Compilar ISO Wayblue
+name: Build Custom Debian 13 Labwc ISO
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "auto/**"
+      - "config/**"
+      - ".github/workflows/build-iso.yml"
+
+permissions:
+  contents: write
 
 jobs:
   build-iso:
+    name: Build Debian 13 (trixie) + Labwc ISO
     runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+      options: --privileged
+    timeout-minutes: 120
     steps:
-      - name: Checkout del repositorio
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Detectar versión base de Fedora
-        id: get_version
+      - name: Install Build Dependencies
         run: |
-          # Extrae dinámicamente la versión de Fedora desde la imagen de Wayblue
-          echo "Descargando la imagen de Wayfire para leer su configuración..."
-          podman pull ghcr.io/wayblueorg/wayfire:latest
-          VERSION=$(podman run --rm ghcr.io/wayblueorg/wayfire:latest cat /usr/lib/os-release | grep '^VERSION_ID=' | cut -d= -f2 | tr -d '"')
-          echo "La imagen actual de Wayblue está basada en Fedora $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            live-build \
+            squashfs-tools \
+            xorriso \
+            dosfstools \
+            e2fsprogs \
+            mtools \
+            binutils \
+            curl \
+            ca-certificates
 
-      - name: Generar la ISO Nativa
-        uses: jasonn3/build-container-installer@main
-        with:
-          arch: x86_64
-          image_repo: ghcr.io/wayblueorg
-          image_name: wayfire
-          image_tag: latest
-          version: ${{ steps.get_version.outputs.VERSION }}
-          iso_name: wayblue-wayfire.iso
+      - name: Show live-build Version
+        run: |
+          lb --version
+          lb config --dump || true
 
-      - name: Guardar la ISO para descargar
+      - name: Configure live-build (auto/config is the source of truth)
+        run: |
+          # Inmune a perdidas del bit de ejecucion en checkout de Windows
+          chmod +x auto/config config/hooks/live/*.hook.chroot
+          sh auto/config
+          lb config --dump
+
+      - name: Build ISO
+        run: |
+          lb build 2>&1 | tee build.log
+          test -f live-image-amd64.hybrid.iso
+
+      - name: Rename and Checksum ISO
+        run: |
+          mv live-image-amd64.hybrid.iso debian13-labwc-300e.hybrid.iso
+          sha256sum debian13-labwc-300e.hybrid.iso > debian13-labwc-300e.hybrid.iso.sha256
+          ls -lah debian13-labwc-300e.hybrid.iso*
+
+      - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Wayblue-Wayfire-ISO
-          path: wayblue-wayfire.iso
-          compression-level: 0
-          retention-days: 1
+          name: debian13-labwc-300e-iso
+          path: |
+            debian13-labwc-300e.hybrid.iso
+            debian13-labwc-300e.hybrid.iso.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload to GitHub Releases (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            debian13-labwc-300e.hybrid.iso
+            debian13-labwc-300e.hybrid.iso.sha256
+          tag_name: debian-labwc-secureboot-v1.0
+          name: "Debian 13 Labwc Non-Free SecureBoot ISO"
+          body: |
+            ISO híbrida Debian 13 (trixie) ultraligera optimizada para Lenovo 300e (Celeron N4120).
+
+            - Compositor Wayland **Labwc** + wf-shell + fuzzel + foot
+            - Firmware Intel non-free: UHD 600 (i915) y Wi-Fi AX201 (iwd)
+            - Audio PipeWire, red NetworkManager
+            - Arranque UEFI **Secure Boot** nativo (shim-signed + grub-efi-amd64-signed)
+            - Instalador live: replica este sistema ya optimizado al disco
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

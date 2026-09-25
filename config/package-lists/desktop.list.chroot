@@ -1,0 +1,39 @@
+# Firmware Intel non-free: grafica UHD 600 (i915) + Wi-Fi AX201 + microcodigo
+firmware-intel-graphics
+firmware-iwlwifi
+intel-microcode
+
+# Aceleracion grafica Mesa
+libgl1-mesa-dri
+
+# Compositor Wayland ultraligero (estilo Openbox)
+labwc
+
+# Panel/fondo de wf-shell + lanzador + notificaciones + terminal + wallpaper
+wf-shell
+fuzzel
+mako-notifier
+foot
+foot-themes
+swaybg
+
+# Sesion: bus de sesion D-Bus + portales Wayland (capturas, filechooser, etc.)
+dbus-user-session
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+
+# Red: NetworkManager con backend iwd (sin wpa_supplicant)
+network-manager
+iwd
+polkitd
+
+# Audio de bajo consumo PipeWire
+pipewire
+pipewire-audio
+wireplumber
+
+# Utilidades minimas
+sudo
+nano
+less
+curl

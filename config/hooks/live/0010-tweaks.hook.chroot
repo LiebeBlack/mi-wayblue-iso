@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# Backend Wi-Fi iwd siempre activo para NetworkManager
+systemctl enable iwd.service NetworkManager.service || true
+
+# Equipo de bajo consumo: sin tareas APT en segundo plano
+systemctl disable apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+systemctl mask   apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+
+exit 0

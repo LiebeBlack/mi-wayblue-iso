@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<labwc_config>
+  <theme>
+    <name></name>
+    <cornerRadius>4</cornerRadius>
+  </theme>
+
+  <keyboard>
+    <default />
+    <!-- Terminal foot: Super+Enter -->
+    <keybind key="W-Return">
+      <action name="Execute" command="foot" />
+    </keybind>
+    <!-- Lanzador fuzzel: Super+D -->
+    <keybind key="W-d">
+      <action name="Execute" command="fuzzel" />
+    </keybind>
+    <!-- Cerrar ventana: Alt+F4 -->
+    <keybind key="A-F4">
+      <action name="Close" />
+    </keybind>
+  </keyboard>
+</labwc_config>
