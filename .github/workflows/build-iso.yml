@@ -1,0 +1,29 @@
+name: Compilar ISO Wayblue
+
+on:
+  workflow_dispatch: # Esto habilita el botón manual para correr la acción
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v5
+
+      - name: Descargar BlueBuild CLI
+        run: |
+          wget https://github.com/blue-build/cli/releases/latest/download/bluebuild-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf bluebuild-x86_64-unknown-linux-gnu.tar.gz
+          sudo mv bluebuild /usr/local/bin/
+
+      - name: Generar la ISO de Wayfire
+        run: |
+          sudo bluebuild generate-iso --iso-name wayblue-wayfire.iso image ghcr.io/wayblueorg/wayfire:latest
+
+      - name: Guardar la ISO para descargar
+        uses: actions/upload-artifact@v5
+        with:
+          name: Wayblue-Wayfire-ISO
+          path: wayblue-wayfire.iso
+          compression-level: 0 # Nivel 0 para que no pierda tiempo comprimiendo el ISO
+          retention-days: 3 # Borra el archivo del servidor en 3 días para ahorrar espacio
