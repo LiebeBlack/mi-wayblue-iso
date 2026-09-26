@@ -23,6 +23,16 @@ hardware real).
 | Instalador | `anaconda-live` (liveinst): replica este sistema ya optimizado al disco |
 | Secure Boot | `shim-x64` + `grub2-efi-x64` + `grub2-efi-x64-cdboot` firmados |
 
+Hardware objetivo: **Lenovo 300e (Celeron N4120, UHD 600 Gen9.5, Wi-Fi AC 9560 CNVi, Intel Display Audio, fanless)**
+
+| Área | Ajuste |
+|---|---|
+| Wi-Fi AC 9560 | `NetworkManager` con `wifi.backend=iwd` (`/etc/NetworkManager/conf.d/90-wifi-iwd.conf`) + `iwd` habilitado + `iwlwifi power_save=1` |
+| Gráfica UHD 600 | KMS temprano de `i915` en el initramfs (`/etc/dracut.conf.d/90-lenovo-300e.conf`) + `microcode_ctl` |
+| Audio (Display Audio/HDMI) | PipeWire + `alsa-ucm` + `alsa-topology` + `snd-hda-intel` en el initramfs |
+| Fanless (ACPI) | `thermald` habilitado: gestiona las zonas térmicas ACPI moderando turbo/frecuencias sin ventilador |
+| Paquetería | Sistema **normal** RPM/DNF: **cero Flatpak** (`-flatpak`, `-flatpak-session-helper`) |
+
 ## Por qué Secure Boot funciona sin errores
 
 La estrategia es **no re-firmar nada**:

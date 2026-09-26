@@ -85,6 +85,10 @@ vulkan-loader
 # --- Firmware / microcode (hardware objetivo: Intel iGPU + Wi-Fi Intel) -------
 microcode_ctl
 alsa-sof-firmware
+# Audio HDMI ("Intel Display Audio") y refrigeración pasiva (fanless)
+alsa-ucm
+alsa-topology
+thermald
 iwlwifi-mvm-firmware
 iwlwifi-dvm-firmware
 iwlegacy-firmware
@@ -183,6 +187,10 @@ gnome-keyring-pam
 -bash-completion
 -glibc-minimal-langpack
 -coreutils-single
+# Cero Flatpak (peticion explicita): sistema normal, solo RPM/DNF.
+# Son paquetes hoja (nada en el arbol los requiere): exclusion segura.
+-flatpak
+-flatpak-session-helper
 %end
 
 # =============================================================================
@@ -229,7 +237,9 @@ chmod 0440 "/etc/sudoers.d/90-${LIVE_USER}-live"
 # -----------------------------------------------------------------------------
 # 3) Config de labwc/sfwbar/foot en /etc/skel (y en el home del live)
 # -----------------------------------------------------------------------------
-mkdir -p /etc/skel/.config/labwc
+# Crear TODOS los directorios ANTES de escribir ficheros: bajo `set -eu`, un
+# directorio ausente mata el %post (así falló sfwbar/config en un build previo)
+mkdir -p /etc/skel/.config/labwc /etc/skel/.config/sfwbar /etc/skel/.config/foot
 cp /usr/share/doc/labwc-0*/rc.xml /etc/skel/.config/labwc/rc.xml 2>/dev/null || \
   cp /usr/share/doc/labwc/rc.xml /etc/skel/.config/labwc/rc.xml 2>/dev/null || true
 cp /usr/share/doc/labwc-0*/menu.xml /etc/skel/.config/labwc/menu.xml 2>/dev/null || \
@@ -297,7 +307,6 @@ layout {
 EOF
 
 # foot: terminal minimal
-mkdir -p /etc/skel/.config/foot
 cat > /etc/skel/.config/foot/foot.ini <<'EOF'
 [main]
 font=monospace:size=11
@@ -315,6 +324,35 @@ command = "tuigreet --time --remember --remember-user-session --asterisks --cmd 
 user = "greeter"
 EOF
 chmod 0644 /etc/greetd/config.toml
+
+# -----------------------------------------------------------------------------
+# 3b) Lenovo 300e (Celeron N4120 / UHD 600 Gen9.5, Wi-Fi AC 9560, fanless)
+# -----------------------------------------------------------------------------
+# Wi-Fi AC 9560 (CNVi, familia iwlwifi/MVM): backend iwd para NetworkManager
+# (mismo enfoque que la ISO Debian de este repo: mas ligero que wpa_supplicant
+# y con roaming rapidos). Firmware: iwlwifi-mvm-firmware. CPU: microcode_ctl.
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/90-wifi-iwd.conf <<'EOF'
+[device]
+wifi.backend=iwd
+EOF
+systemctl enable iwd.service >/dev/null 2>&1 || true
+
+# Ahorro de energia en el radio del 9560 (equipo fanless: menos calor)
+mkdir -p /etc/modprobe.d
+cat > /etc/modprobe.d/90-iwlwifi.conf <<'EOF'
+options iwlwifi power_save=1
+EOF
+
+# Fanless: thermald gestiona los limites termicos pasivos de las zonas
+# termicas ACPI (sustituye al ventilador moderando turbo/frecuencias)
+systemctl enable thermald.service >/dev/null 2>&1 || true
+
+# UHD 600 (Gen9.5): KMS temprano de i915; HDA para el "Intel Display Audio" (HDMI)
+mkdir -p /etc/dracut.conf.d
+cat > /etc/dracut.conf.d/90-lenovo-300e.conf <<'EOF'
+add_drivers+=" i915 snd-hda-intel "
+EOF
 
 # Aplicar la config al usuario del live ya creado por el kickstart
 for f in .config/labwc/rc.xml .config/labwc/menu.xml .config/labwc/environment .config/labwc/autostart .config/sfwbar/config .config/foot/foot.ini; do
