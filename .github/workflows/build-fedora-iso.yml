@@ -35,16 +35,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies (lorax + verificación EFI)
+      - name: Install build dependencies (lorax + anaconda-tui + verificación EFI)
         run: |
           set -euo pipefail
           dnf install -y \
             lorax \
+            anaconda-tui \
             xorriso \
             sbsigntools \
             pesign \
             e2fsprogs \
             dosfstools
+        # anaconda-tui: REQUERIDO por livemedia-creator --no-virt (documentación
+        # oficial de lmc); arrastra anaconda-core con /usr/sbin/anaconda.
 
       - name: Show tool versions
         run: |
@@ -60,8 +63,10 @@ jobs:
           # En contenedor SELinux no aplica; lorax lo exige deshabilitado
           setenforce 0 2>/dev/null || true
 
-          # /mnt tiene mucho más espacio libre que / en los runners
-          mkdir -p /mnt/lmc-tmp /mnt/lmc-out
+          # /mnt tiene mucho más espacio libre que / en los runners.
+          # NOTA: lmc exige que --resultdir NO exista antes del build (lo crea
+          # él mismo); solo pre-creamos el directorio de temporales.
+          mkdir -p /mnt/lmc-tmp
 
           livemedia-creator \
             --make-iso \
@@ -69,7 +74,7 @@ jobs:
             --ks="fedora/kickstarts/fedora-labwc-minimal.ks" \
             --resultdir=/mnt/lmc-out \
             --tmp=/mnt/lmc-tmp \
-            --logfile=/mnt/lmc-out/livemedia.log \
+            --logfile=/mnt/lmc-tmp/livemedia.log \
             --project="Fedora" \
             --releasever=44 \
             --volid="Fedora-44-Labwc-x86_64" \
@@ -79,7 +84,7 @@ jobs:
 
           test -f /mnt/lmc-out/fedora44-labwc-minimal-secureboot.iso
           cp /mnt/lmc-out/fedora44-labwc-minimal-secureboot.iso .
-          cp /mnt/lmc-out/livemedia.log . 2>/dev/null || true
+          cp /mnt/lmc-tmp/livemedia.log . 2>/dev/null || true
 
       # ---------------------------------------------------------------------
       # GATE SECURE BOOT: falla el build si el árbol de arranque de la ISO no
@@ -109,6 +114,13 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Collect build logs (solo si falla)
+        if: failure()
+        run: |
+          cp -f /mnt/lmc-tmp/livemedia.log . 2>/dev/null || true
+          cp -f /mnt/lmc-tmp/program.log . 2>/dev/null || true
+          ls -lah
+
       - name: Upload build logs (solo si falla)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -116,6 +128,8 @@ jobs:
           name: fedora44-build-logs
           path: |
             livemedia.log
+            program.log
+            anaconda/
           if-no-files-found: ignore
           retention-days: 7
 
