@@ -17,7 +17,7 @@ hardware real).
 | Fondo | `swaybg` con color sólido (cero coste de imagen) |
 | Sesión | `greetd` + `tuigreet` (VT1, sin GDM/SDDM/LightDM) |
 | Polkit | `lxpolkit` (agente de autenticación mínimo) |
-| Gráfica | Mesa + `intel-gpu-firmware` + `intel-microcode` (UHD 600 / Gen9+) |
+| Gráfica | Mesa + `intel-gpu-firmware` + `microcode_ctl` (UHD 600 / Gen9+) |
 | Wi-Fi | `NetworkManager-wifi` + `iwd`/`wpa_supplicant`, firmware `iwlwifi-*` |
 | Audio | `pipewire` + `wireplumber` |
 | Instalador | `anaconda-live` (liveinst): replica este sistema ya optimizado al disco |

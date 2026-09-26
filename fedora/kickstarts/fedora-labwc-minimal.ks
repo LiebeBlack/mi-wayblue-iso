@@ -83,7 +83,7 @@ mesa-vulkan-drivers
 vulkan-loader
 
 # --- Firmware / microcode (hardware objetivo: Intel iGPU + Wi-Fi Intel) -------
-intel-microcode
+microcode_ctl
 alsa-sof-firmware
 iwlwifi-mvm-firmware
 iwlwifi-dvm-firmware
@@ -156,11 +156,6 @@ gnome-keyring-pam
 
 # --- Excluir peso innecesario de @core ----------------------------------------
 -firewalld
--sssd
--sssd-common
--sssd-client
--sssd-ad
--sssd-krb5
 -abrt
 -abrt-cli
 -abrt-desktop
