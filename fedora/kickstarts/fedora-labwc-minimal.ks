@@ -201,6 +201,10 @@ user --name=live --gecos="Live System User" --groups=wheel
 # =============================================================================
 services --enabled=NetworkManager,greetd,chronyd
 
+# Requerido por livemedia-creator: al terminar la instalacion, Anaconda debe
+# APAGARSE y no intentar reiniciar el host/contenedor del build.
+shutdown
+
 # =============================================================================
 # POST-CONFIGURACIÓN
 # =============================================================================
