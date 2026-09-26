@@ -1,0 +1,143 @@
+name: Build Fedora 44 Labwc ISO (Secure Boot)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "fedora/**"
+      - ".github/workflows/build-fedora-iso.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-iso:
+    name: Build Fedora 44 Minimal + Labwc ISO
+    # El build corre DENTRO de un contenedor oficial de Fedora de la MISMA
+    # release que la ISO objetivo (requisito de lorax/livemedia-creator para
+    # que las plantillas coincidan con la release).
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:44
+      # --privileged: livemedia-creator en modo --no-virt necesita gestionar
+      # loop devices, montajes y namespaces (misma filosofía que el workflow
+      # Debian de este repo con live-build).
+      options: --privileged
+    timeout-minutes: 150
+
+    steps:
+      - name: Install base tooling
+        run: |
+          set -euo pipefail
+          dnf install -y git-core
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies (lorax + verificación EFI)
+        run: |
+          set -euo pipefail
+          dnf install -y \
+            lorax \
+            xorriso \
+            sbsigntools \
+            pesign \
+            e2fsprogs \
+            dosfstools
+
+      - name: Show tool versions
+        run: |
+          set -uo pipefail
+          lorax -V || lorax --version || true
+          livemedia-creator -V || livemedia-creator --version || true
+          xorriso --version 2>&1 | head -n 1 || true
+          pesign --version || true
+
+      - name: Build ISO (livemedia-creator, no-virt)
+        run: |
+          set -euo pipefail
+          # En contenedor SELinux no aplica; lorax lo exige deshabilitado
+          setenforce 0 2>/dev/null || true
+
+          # /mnt tiene mucho más espacio libre que / en los runners
+          mkdir -p /mnt/lmc-tmp /mnt/lmc-out
+
+          livemedia-creator \
+            --make-iso \
+            --no-virt \
+            --ks="fedora/kickstarts/fedora-labwc-minimal.ks" \
+            --resultdir=/mnt/lmc-out \
+            --tmp=/mnt/lmc-tmp \
+            --logfile=/mnt/lmc-out/livemedia.log \
+            --project="Fedora" \
+            --releasever=44 \
+            --volid="Fedora-44-Labwc-x86_64" \
+            --rootfs-size=8 \
+            --nomacboot \
+            --iso-only \
+            --iso-name="fedora44-labwc-minimal-secureboot.iso"
+
+          test -f /mnt/lmc-out/fedora44-labwc-minimal-secureboot.iso
+          cp /mnt/lmc-out/fedora44-labwc-minimal-secureboot.iso .
+          cp /mnt/lmc-out/livemedia.log . 2>/dev/null || true
+
+      # ---------------------------------------------------------------------
+      # GATE SECURE BOOT: falla el build si el árbol de arranque de la ISO no
+      # contiene shim + grubx64 con firmas Authenticode válidas (Microsoft
+      # UEFI CA 2011 para shim, Fedora Secure Boot CA para GRUB). No se
+      # re-firma nada: los binarios firmados provienen de los paquetes
+      # shim-x64 / grub2-efi-x64 / grub2-efi-x64-cdboot que lorax coloca en
+      # la ISO, por lo que el arranque en hardware real no da ningún error.
+      # ---------------------------------------------------------------------
+      - name: Verify Secure Boot signatures (shim + grubx64)
+        run: |
+          chmod +x fedora/verify-secure-boot.sh
+          bash fedora/verify-secure-boot.sh ./fedora44-labwc-minimal-secureboot.iso
+
+      - name: Checksum ISO
+        run: |
+          sha256sum fedora44-labwc-minimal-secureboot.iso > fedora44-labwc-minimal-secureboot.iso.sha256
+          ls -lah fedora44-labwc-minimal-secureboot.iso*
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedora44-labwc-minimal-secureboot-iso
+          path: |
+            fedora44-labwc-minimal-secureboot.iso
+            fedora44-labwc-minimal-secureboot.iso.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build logs (solo si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedora44-build-logs
+          path: |
+            livemedia.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload to GitHub Releases (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            fedora44-labwc-minimal-secureboot.iso
+            fedora44-labwc-minimal-secureboot.iso.sha256
+          tag_name: fedora-labwc-secureboot-v1.0
+          name: "Fedora 44 Labwc Minimal SecureBoot ISO"
+          body: |
+            ISO live Fedora 44 **Minimal + Labwc** con arranque UEFI **Secure Boot** nativo.
+
+            - Compositor Wayland **Labwc** (estilo Openbox) + sfwbar + fuzzel + foot + mako
+            - Gestor ligero de sesión: **greetd + tuigreet** (sin GDM/SDDM)
+            - Instalador live (anaconda-live) que replica este sistema al disco
+            - **Secure Boot verificado en CI**: shim (Microsoft UEFI CA 2011) y
+              grubx64.efi (Fedora Secure Boot CA) con firmas válidas; no hay
+              binarios re-firmados ni MOK que enrolar
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

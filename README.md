@@ -63,6 +63,16 @@ El resultado es `live-image-amd64.hybrid.iso`.
   compila con `--apt-recommends false` y sin wpa_supplicant).
 - **Bajo consumo**: `apt-daily` desactivado en la imagen; sesión Wayland sin Xorg.
 
+## ISO Fedora 44 + Labwc (con Secure Boot)
+
+Este repositorio también compila una ISO live de **Fedora 44 Minimal + Labwc**
+con arranque **Secure Boot** nativo (shim + grubx64 firmados por Fedora/Microsoft).
+
+- Documentación completa: [`fedora/README.md`](fedora/README.md)
+- Kickstart: [`fedora/kickstarts/fedora-labwc-minimal.ks`](fedora/kickstarts/fedora-labwc-minimal.ks)
+- Workflow: `.github/workflows/build-fedora-iso.yml` (contenedor oficial `fedora:44`, `--privileged`, `livemedia-creator --no-virt`)
+- Gate del CI: [`fedora/verify-secure-boot.sh`](fedora/verify-secure-boot.sh) valida las firmas Authenticode de shim y grubx64 antes de publicar la ISO
+
 ## Correcciones aplicadas respecto a la propuesta original
 
 | Original | Corregido |

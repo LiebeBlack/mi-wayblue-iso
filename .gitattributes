@@ -4,3 +4,6 @@
 # Fuerza LF en scripts que ejecuta Linux (un CRLF rompe el build)
 auto/config text eol=lf
 config/hooks/** text eol=lf
+fedora/kickstarts/*.ks text eol=lf
+fedora/verify-secure-boot.sh text eol=lf
+.github/workflows/*.yml text eol=lf
