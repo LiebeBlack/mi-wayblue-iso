@@ -56,6 +56,11 @@ part / --fstype="ext4" --size=8192
 shim-x64
 grub2-efi-x64
 grub2-efi-x64-cdboot
+# grub2-pc-modules: lorax (x86.tmpl) construye SIEMPRE la imagen El Torito BIOS
+# con grub2-mkimage -O i386-pc-eltorito, aunque la ISO arranque solo por UEFI.
+# Sin estos modulos (/usr/lib/grub/i386-pc/) la fase de ISO falla con
+# "cannot open .../i386-pc/moddep.lst".
+grub2-pc-modules
 grub2-tools
 grub2-tools-extra
 efibootmgr
