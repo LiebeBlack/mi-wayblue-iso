@@ -38,15 +38,32 @@ echo "==> ISO: ${ISO_FILE}"
 # ---------------------------------------------------------------------------
 # 1) Extraer el árbol de arranque EFI de la ISO (xorriso lee la ISO9660 en
 #    modo usuario: no hace falta montar, ideal para el runner del CI)
+#
+#    En una ISO de lorax/lmc el árbol EFI está en la RAÍZ: /EFI/BOOT/.
+#    (En un sistema instalado sería /boot/efi/EFI; probamos ambas por si
+#    algún día se apunta el gate a un árbol montado en vez de a la ISO.)
 # ---------------------------------------------------------------------------
 EXTRACT_DIR="$(mktemp -d)"
 cleanup() { rm -rf "${EXTRACT_DIR}"; }
 trap cleanup EXIT
 
-if ! osirrox -indev "${ISO_FILE}" -extract /boot/efi/EFI "${EXTRACT_DIR}/EFI" >/dev/null 2>&1; then
-    echo "ERROR: no se pudo extraer /boot/efi/EFI de la ISO (¿ISO sin árbol EFI?)" >&2
+EFI_SRC=""
+for candidate in /EFI /boot/efi/EFI; do
+    rm -rf "${EXTRACT_DIR}/EFI"
+    if osirrox -indev "${ISO_FILE}" -extract "${candidate}" "${EXTRACT_DIR}/EFI" >/dev/null 2>&1 \
+        && [ -n "$(find "${EXTRACT_DIR}/EFI" -type f -name '*.efi' -print -quit 2>/dev/null)" ]; then
+        EFI_SRC="${candidate}"
+        break
+    fi
+done
+
+if [ -z "${EFI_SRC}" ]; then
+    echo "ERROR: la ISO no contiene un árbol EFI con binarios .efi (probados /EFI y /boot/efi/EFI)" >&2
+    echo "==> Árbol raíz de la ISO (diagnóstico):" >&2
+    osirrox -indev "${ISO_FILE}" -ls / 2>/dev/null | sed 's/^/    /' || true
     exit 1
 fi
+echo "==> Árbol EFI extraído de ${EFI_SRC}"
 
 echo "==> Binarios EFI presentes en la ISO:"
 find "${EXTRACT_DIR}/EFI" -type f -name '*.efi' -printf '    %P\n' | sort
