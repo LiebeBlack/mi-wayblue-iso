@@ -73,7 +73,6 @@ jobs:
             --project="Fedora" \
             --releasever=44 \
             --volid="Fedora-44-Labwc-x86_64" \
-            --rootfs-size=8 \
             --nomacboot \
             --iso-only \
             --iso-name="fedora44-labwc-minimal-secureboot.iso"
