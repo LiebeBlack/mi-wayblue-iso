@@ -187,10 +187,11 @@ gnome-keyring-pam
 -bash-completion
 -glibc-minimal-langpack
 -coreutils-single
-# Cero Flatpak (peticion explicita): sistema normal, solo RPM/DNF.
-# Son paquetes hoja (nada en el arbol los requiere): exclusion segura.
--flatpak
--flatpak-session-helper
+# NOTA flatpak: anaconda-core tiene Requires duro de "flatpak" en Fedora 44
+# (anaconda-live -> anaconda-webui -> anaconda-core), por lo que NO se excluye:
+# excluirlo rompe el solver de Software selection y el build falla. El RPM queda
+# solo como dependencia del instalador live; el sistema sigue siendo RPM/DNF
+# puro: sin runtimes Flathub, sin remotes, sin apps Flatpak.
 %end
 
 # =============================================================================

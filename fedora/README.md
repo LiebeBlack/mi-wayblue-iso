@@ -5,7 +5,7 @@ Openbox), gestor de sesión **greetd + tuigreet** y arranque UEFI **Secure
 Boot** nativo (shim + GRUB firmados por Fedora/Microsoft, sin errores en
 hardware real).
 
-100 % gestionada con DNF: cero Flatpak, cero inmutabilidad. Construida con
+100 % gestionada con DNF: sin Flathub ni apps Flatpak, cero inmutabilidad. Construida con
 `livemedia-creator` (lorax) dentro de un contenedor oficial `fedora:44`.
 
 ## Qué contiene la ISO
@@ -31,7 +31,7 @@ Hardware objetivo: **Lenovo 300e (Celeron N4120, UHD 600 Gen9.5, Wi-Fi AC 9560 C
 | Gráfica UHD 600 | KMS temprano de `i915` en el initramfs (`/etc/dracut.conf.d/90-lenovo-300e.conf`) + `microcode_ctl` |
 | Audio (Display Audio/HDMI) | PipeWire + `alsa-ucm` + `alsa-topology` + `snd-hda-intel` en el initramfs |
 | Fanless (ACPI) | `thermald` habilitado: gestiona las zonas térmicas ACPI moderando turbo/frecuencias sin ventilador |
-| Paquetería | Sistema **normal** RPM/DNF: **cero Flatpak** (`-flatpak`, `-flatpak-session-helper`) |
+| Paquetería | Sistema **normal** RPM/DNF: sin Flathub, sin remotes ni apps Flatpak. El RPM `flatpak` entra como dependencia dura de `anaconda-core` (requerido por el instalador live); no hay nada instalable ni en uso |
 
 ## Por qué Secure Boot funciona sin errores
 
