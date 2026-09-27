@@ -38,6 +38,18 @@ jobs:
             exit 1
           fi
 
+          # La imagen debian:forky es minimal y NO trae curl: primero apt
+          ok=0
+          for i in 1 2 3; do
+            if apt-get update; then ok=1; break; fi
+            echo "aviso: apt-get update fallo (intento ${i}/3); reintento..." >&2
+            sleep 5
+          done
+          [ "${ok}" -eq 1 ] || { echo "ERROR: apt-get update fallo 3 veces" >&2; exit 1; }
+
+          # curl para el pre-flight + llaves GPG del archivo SIEMPRE frescas
+          apt-get install -y --reinstall debian-archive-keyring debootstrap curl ca-certificates
+
           # Los suites deben existir HOY (si forky se renombra o no esta
           # publicado, morimos aqui en segundos con diagnostico, no a mitad)
           for url in \
@@ -48,18 +60,6 @@ jobs:
               || { echo "ERROR: el suite no responde: ${url}" >&2; exit 1; }
             echo "OK suite: ${url}"
           done
-
-          # apt-get update con reintentos (espejos inestables no matan el build)
-          ok=0
-          for i in 1 2 3; do
-            if apt-get update; then ok=1; break; fi
-            echo "aviso: apt-get update fallo (intento ${i}/3); reintento..." >&2
-            sleep 5
-          done
-          [ "${ok}" -eq 1 ] || { echo "ERROR: apt-get update fallo 3 veces" >&2; exit 1; }
-
-          # Llaves GPG del archivo Debian SIEMPRE frescas en el contenedor
-          apt-get install -y --reinstall debian-archive-keyring debootstrap
 
       - name: Install Build Dependencies
         run: |
