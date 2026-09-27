@@ -33,7 +33,9 @@ lb config noauto \
     --apt-recommends true \
     --apt-options "--yes --Acquire::Retries=5 --Acquire::http::Timeout=30 --Acquire::https::Timeout=30" \
     --memtest none \
-    --username live \
     --iso-volume "Debian-14-Labwc-300e" \
-    --bootappend-live "boot=live components locales=es_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid utc=yes" \
+    # Usuario del live: parametro oficial username= de live-config (procesado
+    # al arrancar). live-build no tiene --username en esta version; tampoco
+    # repetimos "boot=live components" aqui: live-build los anade el solo.
+    --bootappend-live "username=live locales=es_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid utc=yes" \
     "${@}"

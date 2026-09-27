@@ -19,9 +19,12 @@ systemctl disable getty@tty1.service || true
 systemctl disable apt-daily.timer apt-daily-upgrade.timer || true
 systemctl mask   apt-daily.service apt-daily-upgrade.service || true
 
-# --- Usuario live: sudo sin contrasena (instalador y mantenimiento) ----------
-printf '%s\n' 'live ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-live
-chmod 0440 /etc/sudoers.d/90-live
+# --- Sudo sin contrasena para el grupo sudo ---------------------------------
+# Cubre al usuario live (live-config lo mete en sudo) y al usuario que cree
+# el instalador (user-setup lo mete en sudo). No dependemos de un nombre
+# concreto de usuario.
+printf '%s\n' '%sudo ALL=(ALL:ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-nopasswd
+chmod 0440 /etc/sudoers.d/90-nopasswd
 
 # --- Timezone (ademas de bootappend-live; sirve para el sistema instalado) --
 printf '%s\n' 'Europe/Madrid' > /etc/timezone
