@@ -66,13 +66,13 @@ fi
 echo "==> Árbol EFI extraído de ${EFI_SRC}"
 
 echo "==> Binarios EFI presentes en la ISO:"
-find "${EXTRACT_DIR}/EFI" -type f -name '*.efi' -printf '    %P\n' | sort
+find "${EXTRACT_DIR}/EFI" -type f -iname '*.efi' -printf '    %P\n' | sort
 
 # ---------------------------------------------------------------------------
 # 2) Localizar shim y GRUB
 # ---------------------------------------------------------------------------
-SHIM="$(find "${EXTRACT_DIR}/EFI" \( -name 'shimx64.efi' -o -name 'BOOTX64.EFI' \) -print -quit)"
-GRUB="$(find "${EXTRACT_DIR}/EFI" -name 'grubx64.efi' -print -quit)"
+SHIM="$(find "${EXTRACT_DIR}/EFI" \( -iname 'shimx64.efi' -o -iname 'bootx64.efi' \) -print -quit)"
+GRUB="$(find "${EXTRACT_DIR}/EFI" -iname 'grubx64.efi' -print -quit)"
 
 fail=0
 
@@ -90,9 +90,9 @@ fi
 # 3) Integridad de shim como fallback: BOOTX64.EFI debe SER shimx64.efi
 #    (el firmware arranca siempre por EFI/BOOT/BOOTX64.EFI en medios extraíbles)
 # ---------------------------------------------------------------------------
-SHIM_REAL="$(find "${EXTRACT_DIR}/EFI" -name 'shimx64.efi' -print -quit || true)"
+SHIM_REAL="$(find "${EXTRACT_DIR}/EFI" -iname 'shimx64.efi' -print -quit || true)"
 if [ -n "${SHIM_REAL}" ]; then
-    BOOTX64="$(find "${EXTRACT_DIR}/EFI" -name 'BOOTX64.EFI' -print -quit || true)"
+    BOOTX64="$(find "${EXTRACT_DIR}/EFI" -iname 'bootx64.efi' -print -quit || true)"
     if [ -n "${BOOTX64}" ] && ! cmp -s "${BOOTX64}" "${SHIM_REAL}"; then
         echo "ERROR: BOOTX64.EFI difiere de shimx64.efi (no debe reemplazarse el shim)" >&2
         fail=1
@@ -100,8 +100,14 @@ if [ -n "${SHIM_REAL}" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4) Firmas Authenticode embebidas: sbverify --list muestra el CN del
-#    certificado firmante. Comprobamos contra la lista blanca del DB.
+# 4) Firmas Authenticode embebidas. Formato REAL de "sbverify --list":
+#      image signature issuers:
+#       - /CN=...
+#      image signature certificates:
+#       - subject: /C=US/.../CN=Microsoft Corporation UEFI CA 2011
+#         issuer:  /CN=...
+#    Extraemos las líneas "subject:" e "issuer:" (DN completo formato slash)
+#    y las comparamos contra la lista blanca de CAs del DB de Secure Boot.
 # ---------------------------------------------------------------------------
 check_signer() {
     local efi_file="$1"
@@ -109,10 +115,13 @@ check_signer() {
     shift 2
     local allowed=("$@")
     local signers
-    signers="$(sbverify --list "${efi_file}" 2>/dev/null | sed -n 's/.*subject CN=//p' || true)"
+    signers="$(sbverify --list "${efi_file}" 2>/dev/null \
+        | sed -n -e 's/.*subject: //p' -e 's/.*issuer: //p' | sort -u || true)"
 
     if [ -z "${signers}" ]; then
         echo "ERROR: ${label} NO contiene ninguna firma Authenticode" >&2
+        echo "==> Salida completa de sbverify --list (${label}) para diagnóstico:" >&2
+        sbverify --list "${efi_file}" 2>&1 | sed 's/^/    /' >&2 || true
         return 1
     fi
 
@@ -137,12 +146,12 @@ echo "==> Verificando firmantes de las firmas embebidas:"
 # shim lo firma Microsoft UEFI CA 2011 (está en el DB de todo el hardware x86_64)
 check_signer "${SHIM}" "shim" "Microsoft Corporation UEFI CA 2011" || fail=1
 # grubx64.efi de la ISO lo firma Fedora Secure Boot CA (confía shim vía vendor DB)
-check_signer "${GRUB}" "grubx64.efi" "Fedora Secure Boot CA" || fail=1
+check_signer "${GRUB}" "grubx64.efi" "Fedora Secure Boot CA" "Fedora Secure Boot Signer" || fail=1
 
 # Detalle de firmas y resumen de hash en el log del CI (informativo)
 echo "==> Detalle de firmas (pesign):"
-pesign --show-signatures -i "${SHIM}" 2>/dev/null | sed 's/^/    /' || true
-pesign --show-signatures -i "${GRUB}" 2>/dev/null | sed 's/^/    /' || true
+pesign --show-signatures -i "${SHIM}" 2>&1 | sed 's/^/    /' || true
+pesign --show-signatures -i "${GRUB}" 2>&1 | sed 's/^/    /' || true
 
 # ---------------------------------------------------------------------------
 # 5) Resultado
