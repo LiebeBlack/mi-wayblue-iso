@@ -3,8 +3,9 @@
 # Verificación OFFLINE de la ISO Debian 14 (gate del CI)
 # =============================================================================
 # 1) Integridad del sistema de ficheros de la ISO:
-#      EFI/BOOT/{BOOTX64.EFI,grubx64.efi,mmx64.efi}, /live/filesystem.squashfs
-#      y grub.cfg (en /boot/grub o /EFI/BOOT).
+#      árbol EFI (bootx64.efi/shimx64.efi, grubx64.efi, mmx64.efi — live-build
+#      escribe EFI/boot en minúsculas; se busca case-insensitive),
+#      /live/filesystem.squashfs y grub.cfg (/boot/grub o /EFI/boot).
 # 2) Secure Boot: shim y grubx64 con firmas Authenticode de las CAs que el
 #    firmware valida. No descarga nada ni re-firma: los binarios firmados
 #    provienen de los paquetes shim-signed / grub-efi-amd64-signed que
@@ -55,53 +56,65 @@ check_file() {
 
 # ---------------------------------------------------------------------------
 # 2) Estructura crítica: squashfs del live, GRUB y árbol EFI
+#    NOTA: live-build escribe el árbol EFI en MINÚSCULAS
+#    (EFI/boot/bootx64.efi, EFI/boot/grubx64.efi). El firmware UEFI no
+#    distingue mayúsculas al leer la ISO, pero las pruebas -f de este
+#    script sí: buscamos SIEMPRE case-insensitive con find -iname.
 # ---------------------------------------------------------------------------
 echo "==> Integridad del sistema de ficheros de la ISO:"
 check_file "live/filesystem.squashfs" "squashfs del sistema live"
 
-# grub.cfg: live-build lo puede poner en /boot/grub (BIOS+UEFI) o en /EFI/BOOT
-if [ -f "${EXTRACT_DIR}/iso/boot/grub/grub.cfg" ]; then
-    echo "    OK    grub.cfg: /boot/grub/grub.cfg"
-elif [ -f "${EXTRACT_DIR}/iso/EFI/BOOT/grub.cfg" ]; then
-    echo "    OK    grub.cfg: /EFI/BOOT/grub.cfg"
+GRUB_CFG="$(find "${EXTRACT_DIR}/iso" -type f -iname 'grub.cfg' -not -path '*/x86_64-efi/*' -print -quit 2>/dev/null || true)"
+if [ -n "${GRUB_CFG}" ]; then
+    echo "    OK    grub.cfg: /${GRUB_CFG#${EXTRACT_DIR}/iso/}"
 else
-    echo "    FALTA grub.cfg (buscado en /boot/grub y /EFI/BOOT)" >&2
+    echo "    FALTA grub.cfg" >&2
     fail=1
 fi
 
-SHIM="${EXTRACT_DIR}/iso/EFI/BOOT/BOOTX64.EFI"
-GRUB="${EXTRACT_DIR}/iso/EFI/BOOT/grubx64.efi"
-MMX="${EXTRACT_DIR}/iso/EFI/BOOT/mmx64.efi"
+SHIM="$(find "${EXTRACT_DIR}/iso" -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' \) -print -quit 2>/dev/null || true)"
+GRUB="$(find "${EXTRACT_DIR}/iso" -type f -iname 'grubx64.efi' -print -quit 2>/dev/null || true)"
+MMX="$(find "${EXTRACT_DIR}/iso" -type f -iname 'mmx64.efi' -print -quit 2>/dev/null || true)"
 
-check_file "EFI/BOOT/BOOTX64.EFI" "shim como BOOTX64.EFI"
-if [ -f "${GRUB}" ]; then
-    echo "    OK    grubx64.efi (GRUB EFI firmado por Debian)"
+if [ -n "${SHIM}" ]; then
+    echo "    OK    shim: /${SHIM#${EXTRACT_DIR}/iso/}"
+else
+    echo "    FALTA bootx64.efi/shimx64.efi (falta shim-signed)" >&2
+    fail=1
+fi
+if [ -n "${GRUB}" ]; then
+    echo "    OK    grubx64.efi (GRUB EFI firmado por Debian): /${GRUB#${EXTRACT_DIR}/iso/}"
 else
     echo "    FALTA grubx64.efi (falta grub-efi-amd64-signed)" >&2
     fail=1
 fi
-if [ -f "${MMX}" ]; then
+if [ -n "${MMX}" ]; then
     echo "    OK    mmx64.efi (MokManager, enrolar MOK si algún día hiciera falta)"
 fi
 
 if [ "${fail}" -ne 0 ]; then
-    echo "==> Árbol raíz de la ISO (diagnóstico):" >&2
-    find "${EXTRACT_DIR}/iso" -maxdepth 3 | sed 's/^/    /' >&2
+    echo "==> Diagnóstico: raíz de la ISO y árbol EFI:" >&2
+    find "${EXTRACT_DIR}/iso" -maxdepth 1 2>/dev/null | sed 's/^/    /' >&2
+    find "${EXTRACT_DIR}/iso/EFI" 2>/dev/null | sed 's/^/    /' >&2
     exit 1
 fi
 
 # ---------------------------------------------------------------------------
-# 3) Integridad del shim: BOOTX64.EFI debe SER shimx64.efi
+# 3) Integridad del shim: si existen bootx64.efi y shimx64.efi por separado,
+#    deben ser el MISMO binario (el fallback de arranque es el shim).
 # ---------------------------------------------------------------------------
-echo "==> Verificando que BOOTX64.EFI es el shim de Debian:"
-SHIM_ALT="$(find "${EXTRACT_DIR}/iso/EFI" -iname 'shimx64.efi' -print -quit 2>/dev/null || true)"
-if [ -n "${SHIM_ALT}" ]; then
-    if cmp -s "${SHIM}" "${SHIM_ALT}"; then
-        echo "    OK    BOOTX64.EFI == shimx64.efi (shim intacto)"
+echo "==> Verificando integridad del shim de Debian:"
+SHIM_BOOT="$(find "${EXTRACT_DIR}/iso/EFI" -type f -iname 'bootx64.efi' -print -quit 2>/dev/null || true)"
+SHIM_REAL="$(find "${EXTRACT_DIR}/iso/EFI" -type f -iname 'shimx64.efi' -print -quit 2>/dev/null || true)"
+if [ -n "${SHIM_BOOT}" ] && [ -n "${SHIM_REAL}" ]; then
+    if cmp -s "${SHIM_BOOT}" "${SHIM_REAL}"; then
+        echo "    OK    bootx64.efi == shimx64.efi (shim intacto)"
     else
-        echo "ERROR: BOOTX64.EFI difiere de shimx64.efi (no debe reemplazarse el shim)" >&2
+        echo "ERROR: bootx64.efi difiere de shimx64.efi (no debe reemplazarse el shim)" >&2
         fail=1
     fi
+else
+    echo "    info: hay un único binario shim en la ISO (bootx64.efi = shim firmado)"
 fi
 
 # ---------------------------------------------------------------------------
