@@ -79,6 +79,29 @@ jobs:
             sbsigntool \
             pesign
 
+      # -----------------------------------------------------------------
+      # live-build 20250814 aún pide libfuse2 en sus scripts de la fase
+      # binary; en forky ese paquete NO existe (transición time64: solo
+      # quedan libfuse2t64 y el runtime libfuse3-4, que es el que usa todo
+      # el sistema base). Parcheamos la referencia a libfuse3-4 y dejamos
+      # en el log el archivo:línea exacto para diagnóstico.
+      # -----------------------------------------------------------------
+      - name: Patch live-build (libfuse2 no existe en forky)
+        run: |
+          set -euo pipefail
+          matches="$(grep -rln 'libfuse2' /usr/lib/live/build/ /usr/share/live/build 2>/dev/null || true)"
+          if [ -n "${matches}" ]; then
+            echo "Referencias a libfuse2 encontradas en:"
+            echo "${matches}"
+            grep -rn 'libfuse2' ${matches} || true
+            # \b evita tocar "libfuse2t64" (que sí existe en forky)
+            # shellcheck disable=SC2086
+            sed -i 's/\blibfuse2\b/libfuse3-4/g' ${matches}
+            echo "==> Parcheado a libfuse3-4 (runtime fuse3 de forky)."
+          else
+            echo "Sin referencias a libfuse2: nada que parchear."
+          fi
+
       - name: Show live-build Version
         run: |
           lb --version
