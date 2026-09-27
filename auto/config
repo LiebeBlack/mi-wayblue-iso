@@ -13,7 +13,9 @@ set -e
 #   * --apt-recommends true (explicito): apt instala todo lo Recomendado.
 #     Nunca usamos --no-install-recommends: prefiero ISO algo mayor a que
 #     falte media biblioteca en el arranque.
-#   * --apt-options con reintentos y timeouts: un espejo lento no mata el build.
+#   * Reintentos/timeout de APT via apt.conf.d del chroot (ver
+#     config/includes.chroot/etc/apt/apt.conf.d/90-retries): un espejo lento
+#     no mata el build, y el sistema instalado hereda la misma proteccion.
 # ---------------------------------------------------------------------------
 
 # Usuario del live: parametro oficial username= de live-config (procesado
@@ -34,7 +36,6 @@ lb config noauto \
     --updates true \
     --backports false \
     --apt-recommends true \
-    --apt-options "--yes --Acquire::Retries=5 --Acquire::http::Timeout=30 --Acquire::https::Timeout=30" \
     --memtest none \
     --iso-volume "Debian-14-Labwc-300e" \
     --bootappend-live "username=live locales=es_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid utc=yes" \

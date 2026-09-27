@@ -1,0 +1,4 @@
+# Robustez ante espejos lentos o caidas puntuales (build Y sistema instalado)
+Acquire::Retries "5";
+Acquire::http::Timeout "30";
+Acquire::https::Timeout "30";

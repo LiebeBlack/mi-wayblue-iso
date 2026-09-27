@@ -55,9 +55,8 @@ APT: cero Flatpak, cero inmutabilidad.
 
 ```
 auto/config                          Fuente de verdad: regenera config/ en cada build
-config/archives/debian.list.chroot   Repos forky + non-free + non-free-firmware
 config/package-lists/*.list.chroot   Lista de paquetes
-config/includes.chroot/...           Config de labwc, fuzzel, foot, greetd, sesión
+config/includes.chroot/...           Config de labwc, fuzzel, foot, greetd, sesión, APT
 config/hooks/live/*.hook.chroot      Ajustes del chroot (servicios, sudoers, TZ, locales)
 verify-debian-iso.sh                 Gate: integridad ISO + firmas Secure Boot
 .github/workflows/build-iso.yml      CI: compila, verifica y publica la ISO
