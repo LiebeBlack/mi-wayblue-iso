@@ -2,15 +2,22 @@
 set -e
 
 # ---------------------------------------------------------------------------
-# Debian 13 "trixie" - Labwc - Lenovo 300e (Celeron N4120)
+# Debian 14 "forky" (beta) - Labwc SIN panel (escritorio desnudo + fuzzel)
+# Lenovo 300e (Celeron N4120, UHD 600, Wi-Fi Intel, fanless)
 #
 # Este script es la fuente de verdad: `lb config` lo ejecuta automaticamente
 # (wrapper auto/config), por lo que debe llamarse con "noauto" para evitar
 # recursion infinita. Regenera config/ en cada build.
+#
+# ROBUSTEZ ANTI-ERRORES:
+#   * --apt-recommends true (explicito): apt instala todo lo Recomendado.
+#     Nunca usamos --no-install-recommends: prefiero ISO algo mayor a que
+#     falte media biblioteca en el arranque.
+#   * --apt-options con reintentos y timeouts: un espejo lento no mata el build.
 # ---------------------------------------------------------------------------
 
 lb config noauto \
-    --distribution trixie \
+    --distribution forky \
     --architectures amd64 \
     --linux-flavours amd64 \
     --binary-images iso-hybrid \
@@ -23,7 +30,10 @@ lb config noauto \
     --security true \
     --updates true \
     --backports false \
-    --apt-recommends false \
+    --apt-recommends true \
+    --apt-options "--yes --Acquire::Retries=5 --Acquire::http::Timeout=30 --Acquire::https::Timeout=30" \
     --memtest none \
-    --iso-volume "Debian-13-Labwc-300e" \
+    --username live \
+    --iso-volume "Debian-14-Labwc-300e" \
+    --bootappend-live "boot=live components locales=es_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid utc=yes" \
     "${@}"

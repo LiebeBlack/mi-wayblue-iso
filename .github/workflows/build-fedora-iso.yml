@@ -2,11 +2,8 @@ name: Build Fedora 44 Labwc ISO (Secure Boot)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "fedora/**"
-      - ".github/workflows/build-fedora-iso.yml"
+  # Solo manual: el repo es ahora de Debian 14. Para construir la ISO Fedora
+  # usar "Run workflow" en la pestaña Actions.
 
 permissions:
   contents: write

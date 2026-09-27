@@ -1,11 +1,7 @@
-# wf-shell: panel superior
-wf-panel &
-
+# Autostart de labwc (por usuario). Todo en segundo plano, fallos no fatales.
+# Fondo solido (cero coste en el Celeron N4120)
+swaybg -c '#20242c' &
 # Notificaciones
 mako &
-
-# Fondo de pantalla (color solido = cero GPU/RAM de imagen)
-swaybg -m solid -c "#1e2430" &
-
-# Servidor de terminal: arranque instantaneo de foot
-foot --server &
+# Agente PolicyKit (discos/red/instalador): sin el, sudo y polkit fallan en GUI
+lxpolkit &

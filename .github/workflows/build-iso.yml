@@ -1,4 +1,4 @@
-name: Build Custom Debian 13 Labwc ISO
+name: Build Custom Debian 14 Labwc ISO (Secure Boot)
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
     paths:
       - "auto/**"
       - "config/**"
+      - "verify-debian-iso.sh"
       - ".github/workflows/build-iso.yml"
 
 permissions:
@@ -14,21 +15,58 @@ permissions:
 
 jobs:
   build-iso:
-    name: Build Debian 13 (trixie) + Labwc ISO
+    name: Build Debian 14 (forky) + Labwc ISO
     runs-on: ubuntu-latest
     container:
-      image: debian:trixie
+      image: debian:forky
       options: --privileged
     timeout-minutes: 120
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Pre-flight (repos, llaves GPG y espacio en disco)
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+
+          # Espacio: un build de live-build necesita ~10-12 GB libres
+          free_gb="$(df --output=avail -BG /__w | tail -n 1 | tr -dc '0-9')"
+          echo "Espacio disponible: ${free_gb} GB"
+          if [ "${free_gb}" -lt 12 ]; then
+            echo "ERROR: menos de 12 GB libres; el build fallaria a mitad." >&2
+            exit 1
+          fi
+
+          # Los suites deben existir HOY (si forky se renombra o no esta
+          # publicado, morimos aqui en segundos con diagnostico, no a mitad)
+          for url in \
+            http://deb.debian.org/debian/dists/forky/Release \
+            http://deb.debian.org/debian/dists/forky-updates/Release \
+            http://security.debian.org/debian-security/dists/forky-security/Release; do
+            curl -fsSI --retry 3 --retry-delay 2 --max-time 30 "${url}" >/dev/null \
+              || { echo "ERROR: el suite no responde: ${url}" >&2; exit 1; }
+            echo "OK suite: ${url}"
+          done
+
+          # apt-get update con reintentos (espejos inestables no matan el build)
+          ok=0
+          for i in 1 2 3; do
+            if apt-get update; then ok=1; break; fi
+            echo "aviso: apt-get update fallo (intento ${i}/3); reintento..." >&2
+            sleep 5
+          done
+          [ "${ok}" -eq 1 ] || { echo "ERROR: apt-get update fallo 3 veces" >&2; exit 1; }
+
+          # Llaves GPG del archivo Debian SIEMPRE frescas en el contenedor
+          apt-get install -y --reinstall debian-archive-keyring debootstrap
+
       - name: Install Build Dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
-          apt-get update
-          apt-get install -y --no-install-recommends \
+          # SIN --no-install-recommends: se instala todo lo Recomendado para
+          # que no falte nada (misma filosofia anti-errores que el resto del build)
+          apt-get install -y \
             live-build \
             squashfs-tools \
             xorriso \
@@ -37,7 +75,9 @@ jobs:
             mtools \
             binutils \
             curl \
-            ca-certificates
+            ca-certificates \
+            sbsigntool \
+            pesign
 
       - name: Show live-build Version
         run: |
@@ -58,37 +98,59 @@ jobs:
 
       - name: Rename and Checksum ISO
         run: |
-          mv live-image-amd64.hybrid.iso debian13-labwc-300e.hybrid.iso
-          sha256sum debian13-labwc-300e.hybrid.iso > debian13-labwc-300e.hybrid.iso.sha256
-          ls -lah debian13-labwc-300e.hybrid.iso*
+          mv live-image-amd64.hybrid.iso debian14-labwc-300e.hybrid.iso
+          sha256sum debian14-labwc-300e.hybrid.iso > debian14-labwc-300e.hybrid.iso.sha256
+          ls -lah debian14-labwc-300e.hybrid.iso*
+
+      # -------------------------------------------------------------------
+      # GATE POST-BUILD: integridad (squashfs, grub.cfg, arbol EFI) y firmas
+      # Authenticode de shim (Microsoft UEFI CA 2011) y grubx64.efi (Debian
+      # Secure Boot CA). No se re-firma nada: los binarios firmados provienen
+      # de los paquetes shim-signed / grub-efi-amd64-signed.
+      # -------------------------------------------------------------------
+      - name: Verify Secure Boot signatures and ISO integrity
+        run: |
+          chmod +x verify-debian-iso.sh
+          bash verify-debian-iso.sh ./debian14-labwc-300e.hybrid.iso
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debian13-labwc-300e-iso
+          name: debian14-labwc-300e-iso
           path: |
-            debian13-labwc-300e.hybrid.iso
-            debian13-labwc-300e.hybrid.iso.sha256
+            debian14-labwc-300e.hybrid.iso
+            debian14-labwc-300e.hybrid.iso.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload build log (solo si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian14-build-log
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload to GitHub Releases (manual runs only)
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            debian13-labwc-300e.hybrid.iso
-            debian13-labwc-300e.hybrid.iso.sha256
-          tag_name: debian-labwc-secureboot-v1.0
-          name: "Debian 13 Labwc Non-Free SecureBoot ISO"
+            debian14-labwc-300e.hybrid.iso
+            debian14-labwc-300e.hybrid.iso.sha256
+          tag_name: debian-labwc-secureboot-v2.0
+          name: "Debian 14 Labwc Non-Free SecureBoot ISO"
           body: |
-            ISO híbrida Debian 13 (trixie) ultraligera optimizada para Lenovo 300e (Celeron N4120).
+            ISO híbrida Debian 14 "forky" (beta) ultraligera optimizada para Lenovo 300e (Celeron N4120).
 
-            - Compositor Wayland **Labwc** + wf-shell + fuzzel + foot
-            - Firmware Intel non-free: UHD 600 (i915) y Wi-Fi AX201 (iwd)
-            - Audio PipeWire, red NetworkManager
-            - Arranque UEFI **Secure Boot** nativo (shim-signed + grub-efi-amd64-signed)
+            - Compositor Wayland **Labwc** SIN panel (escritorio desnudo + fuzzel + foot)
+            - Firmware Intel non-free: UHD 600 (i915) y Wi-Fi (iwd)
+            - Audio PipeWire, red NetworkManager, thermald (equipo fanless)
+            - Login gráfico ligero: greetd + tuigreet (usuario live/live en el modo live)
             - Instalador live: replica este sistema ya optimizado al disco
+            - Arranque UEFI **Secure Boot** nativo (shim-signed + grub-efi-amd64-signed),
+              firmas verificadas en CI antes de publicar
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

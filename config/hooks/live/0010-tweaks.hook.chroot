@@ -1,11 +1,33 @@
 #!/bin/sh
 set -e
 
-# Backend Wi-Fi iwd siempre activo para NetworkManager
+# ---------------------------------------------------------------------------
+# Ajustes del chroot para la live Debian 14 forky + labwc (Lenovo 300e)
+# Se ejecuta DENTRO del chroot durante el build de live-build.
+# ---------------------------------------------------------------------------
+
+# --- Servicios de sesion y red ----------------------------------------------
+# greetd: login grafico ligero (tuigreet -> labwc)
+# thermald: el 300e es fanless; gestiona las zonas termicas ACPI
+systemctl enable greetd.service thermald.service || true
 systemctl enable iwd.service NetworkManager.service || true
 
+# getty@tty1 pelearia con greetd por la VT1: sin conflictos de login
+systemctl disable getty@tty1.service || true
+
 # Equipo de bajo consumo: sin tareas APT en segundo plano
-systemctl disable apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
-systemctl mask   apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+systemctl disable apt-daily.timer apt-daily-upgrade.timer || true
+systemctl mask   apt-daily.service apt-daily-upgrade.service || true
+
+# --- Usuario live: sudo sin contrasena (instalador y mantenimiento) ----------
+printf '%s\n' 'live ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-live
+chmod 0440 /etc/sudoers.d/90-live
+
+# --- Timezone (ademas de bootappend-live; sirve para el sistema instalado) --
+printf '%s\n' 'Europe/Madrid' > /etc/timezone
+ln -sf /usr/share/zoneinfo/Europe/Madrid /etc/localtime
+
+# --- Locales (locale.gen ya viene del includes; generamos) ------------------
+locale-gen >/dev/null 2>&1 || true
 
 exit 0

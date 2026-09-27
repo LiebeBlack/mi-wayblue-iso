@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Menu del escritorio labwc (clic derecho). Formato openbox_menu compat. -->
+<openbox_menu>
+  <menu id="root-menu" label="Debian 14 Labwc">
+    <item label="Terminal (foot)">
+      <action name="Execute" command="foot" />
+    </item>
+    <item label="Lanzador (fuzzel)">
+      <action name="Execute" command="fuzzel" />
+    </item>
+    <separator />
+    <item label="Instalar Debian en el disco">
+      <action name="Execute" command="debian-installer-launcher" />
+    </item>
+    <separator />
+    <item label="Bloquear pantalla (swaylock)">
+      <action name="Execute" command="swaylock" />
+    </item>
+    <item label="Salir">
+      <action name="Exit" />
+    </item>
+  </menu>
+</openbox_menu>

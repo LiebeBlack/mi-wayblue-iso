@@ -1,0 +1,4 @@
+# Entorno de sesion labwc (aplicado a todos los usuarios via /etc/skel)
+# Teclado espanol desde el primer frame del compositor (Wayland nativo)
+XKB_DEFAULT_LAYOUT=es
+XDG_CURRENT_DESKTOP=wlroots

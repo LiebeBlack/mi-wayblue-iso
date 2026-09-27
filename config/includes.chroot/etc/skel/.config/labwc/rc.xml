@@ -1,23 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  labwc - configuracion de teclado/tema para Lenovo 300e (Debian 14 forky)
+  Formato verificado contra labwc 0.20 (docs/rc.xml de upstream).
+-->
 <labwc_config>
   <theme>
     <name></name>
-    <cornerRadius>4</cornerRadius>
+    <cornerRadius>6</cornerRadius>
+    <font name="sans" size="10" />
   </theme>
 
   <keyboard>
     <default />
-    <!-- Terminal foot: Super+Enter -->
     <keybind key="W-Return">
       <action name="Execute" command="foot" />
     </keybind>
-    <!-- Lanzador fuzzel: Super+D -->
     <keybind key="W-d">
       <action name="Execute" command="fuzzel" />
     </keybind>
-    <!-- Cerrar ventana: Alt+F4 -->
     <keybind key="A-F4">
       <action name="Close" />
     </keybind>
+    <keybind key="A-Tab">
+      <action name="NextWindow" />
+    </keybind>
+    <keybind key="W-l">
+      <action name="Execute" command="swaylock" />
+    </keybind>
+    <keybind key="C-A-Left">
+      <action name="GoToDesktop" to="left" wrap="yes" />
+    </keybind>
+    <keybind key="C-A-Right">
+      <action name="GoToDesktop" to="right" wrap="yes" />
+    </keybind>
+    <!-- Volumen: wpctl viene con wireplumber (PipeWire). Sin alsa-utils. -->
+    <keybind key="XF86AudioRaiseVolume">
+      <action name="Execute" command="wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+" />
+    </keybind>
+    <keybind key="XF86AudioLowerVolume">
+      <action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" />
+    </keybind>
+    <keybind key="XF86AudioMute">
+      <action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" />
+    </keybind>
+    <!-- Brillo de la pantalla integrada del 300e -->
+    <keybind key="XF86MonBrightnessUp">
+      <action name="Execute" command="brightnessctl set +5%" />
+    </keybind>
+    <keybind key="XF86MonBrightnessDown">
+      <action name="Execute" command="brightnessctl set 5%-" />
+    </keybind>
   </keyboard>
+
+  <mouse>
+    <default />
+    <!-- Menu con clic derecho en el escritorio (ver menu.xml) -->
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu" menu="root-menu" />
+      </mousebind>
+    </context>
+  </mouse>
 </labwc_config>

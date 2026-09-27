@@ -1,4 +1,4 @@
-# Firmware Intel non-free: grafica UHD 600 (i915) + Wi-Fi AX201 + microcodigo
+# Firmware Intel non-free: grafica UHD 600 (i915) + Wi-Fi + microcodigo
 firmware-intel-graphics
 firmware-iwlwifi
 intel-microcode
@@ -7,30 +7,45 @@ intel-microcode
 libgl1-mesa-dri
 
 # Compositor Wayland ultraligero (estilo Openbox)
+# SIN panel a proposito: escritorio desnudo, todo se lanza con fuzzel (Super+d)
 labwc
 
-# Panel/fondo de wf-shell + lanzador + notificaciones + terminal + wallpaper
-wf-shell
+# Lanzador + terminal + notificaciones + fondo de pantalla
 fuzzel
-mako-notifier
 foot
 foot-themes
 swaybg
+mako-notifier
 
-# Sesion: bus de sesion D-Bus + portales Wayland (capturas, filechooser, etc.)
+# Bloqueo de pantalla y brillo (300e: pantalla integrada, fanless)
+swaylock
+brightnessctl
+
+# Sesion: bus D-Bus de sesion + portal Wayland + agente PolicyKit
 dbus-user-session
 xdg-desktop-portal
 xdg-desktop-portal-wlr
+polkitd
+lxpolkit
 
-# Red: NetworkManager con backend iwd (sin wpa_supplicant)
+# Login grafico ligero (sin GDM/SDDM/LightDM)
+greetd
+tuigreet
+
+# Red: NetworkManager con backend iwd para el Wi-Fi Intel
 network-manager
 iwd
-polkitd
 
 # Audio de bajo consumo PipeWire
 pipewire
 pipewire-audio
 wireplumber
+
+# Termico: el 300e es fanless; thermald gestiona las zonas ACPI
+thermald
+
+# Instalador live: se lanza desde el menu de labwc y crea TU usuario
+debian-installer-launcher
 
 # Utilidades minimas
 sudo
